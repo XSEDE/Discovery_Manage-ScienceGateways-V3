@@ -199,7 +199,7 @@ class Router():
         self.max_stale = max_stale * 60         # 24 hours in seconds force refresh
         self.application = os.path.basename(__file__)
         self.memory = {}                        # Used to put information in "memory"
-        self.Affiliation = 'xsede.org'
+        self.Affiliation = 'sciencegateways.org'
         self.DefaultValidity = timedelta(days = 14)
         self.memory['gateway_urnmap'] = {}       # Mapping of Gateway Name to its GLOBALURN
         self.GWPROVIDER_URNMAP = self.memory['gateway_urnmap']
@@ -234,6 +234,11 @@ class Router():
         self.CATALOGS = {}
         for cat in ResourceV3Catalog.objects.filter(Affiliation__exact=self.Affiliation):
             self.CATALOGS[cat.ID] = model_to_dict(cat)
+
+        #JK_TEST - REMOVE
+        self.CATALOGS_XSEDE = {}
+        for cat in ResourceV3Catalog.objects.filter(Affiliation__exact='xsede.org'):
+            self.CATALOGS_XSEDE[cat.ID] = model_to_dict(cat)
 
         self.STEPS = []
         for stepconf in self.config['STEPS']:
@@ -432,10 +437,37 @@ class Router():
             self.PROCESSING_SECONDS[me],
             self.STATS[me + '.Update'], self.STATS[me + '.Delete'], self.STATS[me + '.Skip'])
         self.logger.info(summary_msg)
+
+
+    # JK_TODO
+     #####################################################################
+    # Function for loading SGCI (Science Gateways Community Institute) data
+    # Load SGCI data to ResourceV3 tables (local, standard)
+    # This function populates self.SGCICATALOG_URNMAP
+    #
+    def Write_SGCI_Gateway_Catalog(self, content, contype, config):
+        start_utc = datetime.now(timezone.utc)
+        # JK_TODO may update these
+        myRESGROUP = 'Software'
+        myRESTYPE = 'Online Service'
+        me = '{} to {}({}:{})'.format(sys._getframe().f_code.co_name, self.WAREHOUSE_CATALOG, myRESGROUP, myRESTYPE)
+        self.PROCESSING_SECONDS[me] = getattr(self.PROCESSING_SECONDS, me, 0)
+        
+        cur = {}   # Current items
+        new = {}   # New items
+        for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX']):
+            cur[item.ID] = item
+
+        self.PROCESSING_SECONDS[me] += (datetime.now(timezone.utc) - start_utc).total_seconds()
+        self.Log_STEP(me)
+        return(0, '')
+
+
+    # JK_TODO - REMOVE when done.  Not using this.
     #
     # This function populates self.GWPROVIDER_URNMAP
     #
-    def Write_ScienceGateways(self, content, contype, config):
+    def Write_RSP_Gateway_Providers(self, content, contype, config):
         start_utc = datetime.now(timezone.utc)
         myRESGROUP = 'Software'
         myRESTYPE = 'Online Service'
