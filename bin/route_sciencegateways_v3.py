@@ -235,11 +235,6 @@ class Router():
         for cat in ResourceV3Catalog.objects.filter(Affiliation__exact=self.Affiliation):
             self.CATALOGS[cat.ID] = model_to_dict(cat)
 
-        #JK_TEST - REMOVE
-        self.CATALOGS_XSEDE = {}
-        for cat in ResourceV3Catalog.objects.filter(Affiliation__exact='xsede.org'):
-            self.CATALOGS_XSEDE[cat.ID] = model_to_dict(cat)
-
         self.STEPS = []
         for stepconf in self.config['STEPS']:
             if 'CATALOGURN' not in stepconf:
@@ -323,6 +318,7 @@ class Router():
             return({contype: self.HTTP_CACHE[data_cache_key]})
 
         headers = {}
+        # JK_TODO - Not need for this. Remove to clean up when done
         # different headers for RDR site 
         if 'rdr.xsede.org' == url.hostname:
             headers = {'Content-type': 'application/json',
@@ -330,24 +326,49 @@ class Router():
                         'XA-KEY-FORMAT': 'underscore'}
         ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         conn = httplib.HTTPSConnection(host=url.hostname, port=getattr(url, 'port', None), context=ctx)
+ 
+        dataStride = 300
+        dataOffset = 0
+        lenListRetrieved = dataStride
+        content = {}
+        while lenListRetrieved > 0:
+            url_path = url.path + '?limit={}&offset={}'.format(dataStride, dataOffset)
+            conn.request('GET', url_path, None, headers)
+            self.logger.debug('HTTP GET {}'.format(url.geturl()))
+            response = conn.getresponse()
+            result = response.read().decode("utf-8-sig")
+            self.logger.debug('HTTP RESP {} {} (returned {}/bytes)'.format(response.status, response.reason, len(result)))
+            try:
+                contentRemain = json.loads(result)
+                lenListRetrieved = len(contentRemain['result'])
 
-        conn.request('GET', url.path, None, headers)
-        self.logger.debug('HTTP GET {}'.format(url.geturl()))
-        response = conn.getresponse()
-        result = response.read().decode("utf-8-sig")
-        self.logger.debug('HTTP RESP {} {} (returned {}/bytes)'.format(response.status, response.reason, len(result)))
-        try:
-            content = json.loads(result)
-        except ValueError as e:
-            self.logger.error('Response not in expected JSON format ({})'.format(e))
-            return(None)
-        else:
-            # cache content only for the url used more than once
-            if url.geturl() in self.URL_USE_COUNT:
-                if (self.URL_USE_COUNT[url.geturl()] > 1):
-                    # save retrieved content to the HTTP_CACHE to reuse from memory
-                    self.HTTP_CACHE[data_cache_key] = content
-            return({contype: content})
+                if dataOffset == 0: # init
+                    content = contentRemain
+                else:
+                    content['result'] += contentRemain['result']
+
+                print ('lenListRetrieved: {} '.format(lenListRetrieved))
+                dataOffset += dataStride
+                print('dataOffset: {} '.format(dataOffset))
+                print('numAllContent: {}'.format(len(content['result'])))
+            except ValueError as e:
+                self.logger.error('Response not in expected JSON format ({})'.format(e))
+                return(None)
+            else:
+                if lenListRetrieved == 0: # no more remaining data 
+                    # JK_DBG - check data
+                    """
+                    num = 0
+                    for x in content['result']:
+                        print ('{}> uuid: {}'.format(num, x['uuid']))
+                        num += 1
+                    """
+                    # cache content only for the url used more than once
+                    if url.geturl() in self.URL_USE_COUNT:
+                        if (self.URL_USE_COUNT[url.geturl()] > 1):
+                            # save retrieved content to the HTTP_CACHE to reuse from memory
+                            self.HTTP_CACHE[data_cache_key] = content
+                    return({contype: content})
 
     def Analyze_CONTENT(self, content):
         # Write when needed
@@ -447,7 +468,6 @@ class Router():
     #
     def Write_SGCI_Gateway_Catalog(self, content, contype, config):
         start_utc = datetime.now(timezone.utc)
-        # JK_TODO may update these
         myRESGROUP = 'Software'
         myRESTYPE = 'Online Service'
         me = '{} to {}({}:{})'.format(sys._getframe().f_code.co_name, self.WAREHOUSE_CATALOG, myRESGROUP, myRESTYPE)
@@ -458,12 +478,15 @@ class Router():
         for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX']):
             cur[item.ID] = item
 
+        for item in content[contype]['result'] :
+            myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], str(item['uuid']))
+
         self.PROCESSING_SECONDS[me] += (datetime.now(timezone.utc) - start_utc).total_seconds()
         self.Log_STEP(me)
         return(0, '')
 
 
-    # JK_TODO - REMOVE when done.  Not using this.
+    # JK_TODO - REMOVE This function when done.  Not using this.
     #
     # This function populates self.GWPROVIDER_URNMAP
     #
