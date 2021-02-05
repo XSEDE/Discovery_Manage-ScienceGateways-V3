@@ -324,6 +324,7 @@ class Router():
             headers = {'Content-type': 'application/json',
                         'XA-CLIENT': 'XSEDE',
                         'XA-KEY-FORMAT': 'underscore'}
+
         ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         conn = httplib.HTTPSConnection(host=url.hostname, port=getattr(url, 'port', None), context=ctx)
  
@@ -331,7 +332,7 @@ class Router():
         dataOffset = 0
         lenListRetrieved = dataStride
         content = {}
-        while lenListRetrieved > 0:
+        while lenListRetrieved == dataStride:
             url_path = url.path + '?limit={}&offset={}'.format(dataStride, dataOffset)
             conn.request('GET', url_path, None, headers)
             self.logger.debug('HTTP GET {}'.format(url.geturl()))
@@ -344,7 +345,7 @@ class Router():
 
                 if dataOffset == 0: # init
                     content = contentRemain
-                else:
+                else: # accumulate remaining retrieved data
                     content['result'] += contentRemain['result']
 
                 print ('lenListRetrieved: {} '.format(lenListRetrieved))
@@ -354,21 +355,21 @@ class Router():
             except ValueError as e:
                 self.logger.error('Response not in expected JSON format ({})'.format(e))
                 return(None)
-            else:
-                if lenListRetrieved == 0: # no more remaining data 
-                    # JK_DBG - check data
-                    """
-                    num = 0
-                    for x in content['result']:
-                        print ('{}> uuid: {}'.format(num, x['uuid']))
-                        num += 1
-                    """
-                    # cache content only for the url used more than once
-                    if url.geturl() in self.URL_USE_COUNT:
-                        if (self.URL_USE_COUNT[url.geturl()] > 1):
-                            # save retrieved content to the HTTP_CACHE to reuse from memory
-                            self.HTTP_CACHE[data_cache_key] = content
-                    return({contype: content})
+
+        # JK_DBG - check data, Remove when done
+        """
+        num = 0
+        for x in content['result']:
+            print ('{}> uuid: {}'.format(num, x['uuid']))
+            num += 1
+        """
+        # cache content only for the url used more than once
+        if url.geturl() in self.URL_USE_COUNT:
+            if (self.URL_USE_COUNT[url.geturl()] > 1):
+                # save retrieved content to the HTTP_CACHE to reuse from memory
+                self.HTTP_CACHE[data_cache_key] = content
+
+        return({contype: content})
 
     def Analyze_CONTENT(self, content):
         # Write when needed
@@ -475,6 +476,7 @@ class Router():
         
         cur = {}   # Current items
         new = {}   # New items
+        # get existing SGCI data from local table
         for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX']):
             cur[item.ID] = item
 
