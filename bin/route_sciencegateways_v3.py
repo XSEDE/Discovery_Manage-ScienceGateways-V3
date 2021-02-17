@@ -473,15 +473,43 @@ class Router():
         myRESTYPE = 'Online Service'
         me = '{} to {}({}:{})'.format(sys._getframe().f_code.co_name, self.WAREHOUSE_CATALOG, myRESGROUP, myRESTYPE)
         self.PROCESSING_SECONDS[me] = getattr(self.PROCESSING_SECONDS, me, 0)
-        
+
+        # For LoccalURL - make a web link to access individual data 
+        localUrlPrefix = config['SRCURL'].scheme + '://' + config['SRCURL'].netloc + '/#/home/' 
+
         cur = {}   # Current items
         new = {}   # New items
         # get existing SGCI data from local table
         for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX']):
             cur[item.ID] = item
 
+        # iterrate data to load to Resource V3 DB tables
         for item in content[contype]['result'] :
-            myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], str(item['uuid']))
+            myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], str(item['uuid'])).replace(":catalog:", ":resource:catalog.")
+
+            # JK_DBG
+            #localURL = localUrlPrefix + item['uuid']
+            # --------------------------------------------
+            # load data to ResourceV3 (local) table
+            try:
+                local = ResourceV3Local(
+                            ID = myGLOBALURN,
+                            CreationTime = datetime.now(timezone.utc),
+                            Validity = self.DefaultValidity,
+                            Affiliation = self.Affiliation,
+                            LocalID = item['uuid'],
+                            LocalType = 'SGCI Catalog',
+                            LocalURL = localUrlPrefix + item['uuid'],
+                            CatalogMetaURL = self.CATALOGURN_to_URL(config['CATALOGURN']),
+                            EntityJSON = item,
+                        )
+                local.save()
+            except Exception as e:
+                msg = '{} saving local ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
+                self.logger.error(msg)
+                return(False, msg)
+            new[myGLOBALURN] = local
+
 
         self.PROCESSING_SECONDS[me] += (datetime.now(timezone.utc) - start_utc).total_seconds()
         self.Log_STEP(me)
