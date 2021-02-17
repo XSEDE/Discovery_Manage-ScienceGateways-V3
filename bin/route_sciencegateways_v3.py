@@ -416,8 +416,9 @@ class Router():
             except Exception as e:
                 self.logger.error('{} deleting Elastic id={}: {}'.format(type(e).__name__, URN, e))
             try:
-                ResourceV3Relation.objects.filter(FirstResourceID__exact = URN).delete()
-                ResourceV3.objects.get(pk = URN).delete()
+                # JK_TODO : uncomment after adding standard and relations
+                #ResourceV3Relation.objects.filter(FirstResourceID__exact = URN).delete()
+                #ResourceV3.objects.get(pk = URN).delete()
                 ResourceV3Local.objects.get(pk = URN).delete()
             except Exception as e:
                 self.logger.error('{} deleting ID={}: {}'.format(type(e).__name__, URN, e))
@@ -480,7 +481,7 @@ class Router():
         cur = {}   # Current items
         new = {}   # New items
         # get existing SGCI data from local table
-        for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX']):
+        for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX'].replace(":catalog:", ":resource:catalog.")):
             cur[item.ID] = item
 
         # iterrate data to load to Resource V3 DB tables
@@ -510,6 +511,8 @@ class Router():
                 return(False, msg)
             new[myGLOBALURN] = local
 
+
+        self.Delete_OLD(me, cur, new)
 
         self.PROCESSING_SECONDS[me] += (datetime.now(timezone.utc) - start_utc).total_seconds()
         self.Log_STEP(me)
