@@ -333,7 +333,8 @@ class Router():
         lenListRetrieved = dataStride
         content = {}
         while lenListRetrieved == dataStride:
-            url_path = url.path + '?limit={}&offset={}'.format(dataStride, dataOffset)
+            # Add data retriveing filters on the URL path 
+            url_path = url.path + '?q={}&offset={}&limit={}'.format("{'name':'sg_catalog_gateways'}", dataOffset, dataStride)
             conn.request('GET', url_path, None, headers)
             self.logger.debug('HTTP GET {}'.format(url.geturl()))
             response = conn.getresponse()
@@ -484,6 +485,22 @@ class Router():
         for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX'].replace(":catalog:", ":resource:catalog.")):
             cur[item.ID] = item
 
+        
+        # Test for loop , same as below
+        num = 1
+        for item in content[contype]['result'] :
+            # prepare for Topics and Keywords fields of the standard table
+            topics = []
+            keywords = []
+            for category in item['value']['categories']:
+                topics.append(category)
+            for tag in item['value']['tags']:
+                keywords.append(tag)
+
+            # JKDBG
+            #print('JKDBG {}> Topics: {}, Keywords: {}'.format(num, ','.join(topics), ','.join(keywords)))
+
+
         # iterrate data to load to Resource V3 DB tables
         for item in content[contype]['result'] :
             myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], str(item['uuid'])).replace(":catalog:", ":resource:catalog.")
@@ -511,6 +528,32 @@ class Router():
                 return(False, msg)
             new[myGLOBALURN] = local
 
+
+            # --------------------------------------------
+            # update ResourceV3 (standard) table
+            try:
+                resource = ResourceV3(
+                            ID = myGLOBALURN,
+                            Affiliation = self.Affiliation,
+                            LocalID = item['uuid'],
+                            QualityLevel = 'Production',
+                            Name = item['value']['name'],
+                            ResourceGroup = myRESGROUP,
+                            Type = myRESTYPE,
+                            ShortDescription = None,
+                            ProviderID = None,
+                            Description = item['value']['description'],
+                            Topics = ','.join(topics),
+                            Keywords = ','.join(keywords),
+                            Audience = self.Affiliation,
+                    )
+                resource.save()
+                if self.ESEARCH:
+                    resource.indexing()
+            except Exception as e:
+                msg = '{} saving resource ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
+                self.logger.error(msg)
+                return(False, msg)
 
         self.Delete_OLD(me, cur, new)
 
