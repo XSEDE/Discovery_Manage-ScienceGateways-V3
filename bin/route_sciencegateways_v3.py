@@ -485,28 +485,12 @@ class Router():
         for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX'].replace(":catalog:", ":resource:catalog.")):
             cur[item.ID] = item
 
-        
-        # Test for loop , same as below
-        num = 1
-        for item in content[contype]['result'] :
-            # prepare for Topics and Keywords fields of the standard table
-            topics = []
-            keywords = []
-            for category in item['value']['categories']:
-                topics.append(category)
-            for tag in item['value']['tags']:
-                keywords.append(tag)
 
-            # JKDBG
-            #print('JKDBG {}> Topics: {}, Keywords: {}'.format(num, ','.join(topics), ','.join(keywords)))
-
-
+        #------------------------------------------------------
         # iterrate data to load to Resource V3 DB tables
         for item in content[contype]['result'] :
             myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], str(item['uuid'])).replace(":catalog:", ":resource:catalog.")
 
-            # JK_DBG
-            #localURL = localUrlPrefix + item['uuid']
             # --------------------------------------------
             # load data to ResourceV3 (local) table
             try:
@@ -531,6 +515,16 @@ class Router():
 
             # --------------------------------------------
             # update ResourceV3 (standard) table
+
+            # prepare for Topics and Keywords fields of the standard table
+            topics = []
+            keywords = []
+            for category in item['value']['categories']:
+                topics.append(category)
+            for tag in item['value']['tags']:
+                keywords.append(tag)
+
+
             try:
                 resource = ResourceV3(
                             ID = myGLOBALURN,
