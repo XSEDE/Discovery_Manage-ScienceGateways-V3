@@ -524,6 +524,13 @@ class Router():
             for tag in item['value']['tags']:
                 keywords.append(tag)
 
+            # prepare for Description field. Append institutions to Description 
+            institutions = item['value'].get('institutions', None)
+            if institutions:
+                institutions_csv =  '\nAssociated Institutions:' + ','.join(institutions)
+            else: # empty or not found
+                institutions_csv = ''
+
 
             try:
                 resource = ResourceV3(
@@ -536,7 +543,7 @@ class Router():
                             Type = myRESTYPE,
                             ShortDescription = None,
                             ProviderID = None,
-                            Description = item['value']['description'],
+                            Description = item['value']['description'] + institutions_csv,
                             Topics = ','.join(topics),
                             Keywords = ','.join(keywords),
                             Audience = self.Affiliation,
