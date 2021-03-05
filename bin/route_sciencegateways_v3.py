@@ -318,12 +318,6 @@ class Router():
             return({contype: self.HTTP_CACHE[data_cache_key]})
 
         headers = {}
-        # JK_TODO - Not need for this. Remove to clean up when done
-        # different headers for RDR site 
-        if 'rdr.xsede.org' == url.hostname:
-            headers = {'Content-type': 'application/json',
-                        'XA-CLIENT': 'XSEDE',
-                        'XA-KEY-FORMAT': 'underscore'}
 
         ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         conn = httplib.HTTPSConnection(host=url.hostname, port=getattr(url, 'port', None), context=ctx)
@@ -349,21 +343,15 @@ class Router():
                 else: # accumulate remaining retrieved data
                     content['result'] += contentRemain['result']
 
-                print ('lenListRetrieved: {} '.format(lenListRetrieved))
+                print ('JK_DBG> lenListRetrieved: {} '.format(lenListRetrieved))
                 dataOffset += dataStride
-                print('dataOffset: {} '.format(dataOffset))
-                print('numAllContent: {}'.format(len(content['result'])))
+                print('JK_DBG> dataOffset: {} '.format(dataOffset))
+                print('JK_DBG> numAllContent: {}'.format(len(content['result'])))
             except ValueError as e:
                 self.logger.error('Response not in expected JSON format ({})'.format(e))
                 return(None)
 
-        # JK_DBG - check data, Remove when done
-        """
-        num = 0
-        for x in content['result']:
-            print ('{}> uuid: {}'.format(num, x['uuid']))
-            num += 1
-        """
+
         # cache content only for the url used more than once
         if url.geturl() in self.URL_USE_COUNT:
             if (self.URL_USE_COUNT[url.geturl()] > 1):
@@ -417,7 +405,7 @@ class Router():
             except Exception as e:
                 self.logger.error('{} deleting Elastic id={}: {}'.format(type(e).__name__, URN, e))
             try:
-                # JK_TODO : uncomment after adding standard and relations
+                # JK_TODO : remove of uncomment this line if add relations
                 #ResourceV3Relation.objects.filter(FirstResourceID__exact = URN).delete()
                 ResourceV3.objects.get(pk = URN).delete()
                 ResourceV3Local.objects.get(pk = URN).delete()
@@ -463,7 +451,7 @@ class Router():
         self.logger.info(summary_msg)
 
 
-    # JK_TODO
+
      #####################################################################
     # Function for loading SGCI (Science Gateways Community Institute) data
     # Load SGCI data to ResourceV3 tables (local, standard)
