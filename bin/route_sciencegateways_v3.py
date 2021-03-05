@@ -419,7 +419,7 @@ class Router():
             try:
                 # JK_TODO : uncomment after adding standard and relations
                 #ResourceV3Relation.objects.filter(FirstResourceID__exact = URN).delete()
-                #ResourceV3.objects.get(pk = URN).delete()
+                ResourceV3.objects.get(pk = URN).delete()
                 ResourceV3Local.objects.get(pk = URN).delete()
             except Exception as e:
                 self.logger.error('{} deleting ID={}: {}'.format(type(e).__name__, URN, e))
