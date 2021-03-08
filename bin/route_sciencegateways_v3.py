@@ -199,7 +199,7 @@ class Router():
         self.max_stale = max_stale * 60         # 24 hours in seconds force refresh
         self.application = os.path.basename(__file__)
         self.memory = {}                        # Used to put information in "memory"
-        self.Affiliation = 'sciencegateways.org'
+        self.Affiliation = 'sciencegateways.org'  # This app is only for SGCI 
         self.DefaultValidity = timedelta(days = 14)
         self.memory['gateway_urnmap'] = {}       # Mapping of Gateway Name to its GLOBALURN
         self.GWPROVIDER_URNMAP = self.memory['gateway_urnmap']
@@ -322,8 +322,11 @@ class Router():
         ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         conn = httplib.HTTPSConnection(host=url.hostname, port=getattr(url, 'port', None), context=ctx)
  
-        dataStride = 300
+        # Only can retrieve up to 300 SGCI data entries at once but there are more.
+        # Thus, repeat the retrieving with offset and limit parameters until all the data 
+        # entries are retrieved. 
         dataOffset = 0
+        dataStride = 300
         lenListRetrieved = dataStride
         content = {}
         while lenListRetrieved == dataStride:
@@ -343,6 +346,7 @@ class Router():
                 else: # accumulate remaining retrieved data
                     content['result'] += contentRemain['result']
 
+                # JK_TODO: remove debug lines when done.
                 print ('JK_DBG> lenListRetrieved: {} '.format(lenListRetrieved))
                 dataOffset += dataStride
                 print('JK_DBG> dataOffset: {} '.format(dataOffset))
@@ -452,10 +456,9 @@ class Router():
 
 
 
-     #####################################################################
+    ########################################################################
     # Function for loading SGCI (Science Gateways Community Institute) data
     # Load SGCI data to ResourceV3 tables (local, standard)
-    # This function populates self.SGCICATALOG_URNMAP
     #
     def Write_SGCI_Gateway_Catalog(self, content, contype, config):
         start_utc = datetime.now(timezone.utc)
@@ -476,11 +479,13 @@ class Router():
 
         #------------------------------------------------------
         # iterrate data to load to Resource V3 DB tables
+        #
         for item in content[contype]['result'] :
             myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], str(item['uuid'])).replace(":catalog:", ":resource:catalog.")
 
             # --------------------------------------------
             # load data to ResourceV3 (local) table
+            #
             try:
                 local = ResourceV3Local(
                             ID = myGLOBALURN,
@@ -503,6 +508,7 @@ class Router():
 
             # --------------------------------------------
             # update ResourceV3 (standard) table
+            #
 
             # prepare for Topics and Keywords fields of the standard table
             topics = []
@@ -551,78 +557,6 @@ class Router():
         return(0, '')
 
 
-    # JK_TODO - REMOVE This function when done.  Not using this.
-    #
-    # This function populates self.GWPROVIDER_URNMAP
-    #
-    def Write_RSP_Gateway_Providers(self, content, contype, config):
-        start_utc = datetime.now(timezone.utc)
-        myRESGROUP = 'Software'
-        myRESTYPE = 'Online Service'
-        me = '{} to {}({}:{})'.format(sys._getframe().f_code.co_name, self.WAREHOUSE_CATALOG, myRESGROUP, myRESTYPE)
-        self.PROCESSING_SECONDS[me] = getattr(self.PROCESSING_SECONDS, me, 0)
-        
-        cur = {}   # Current items
-        new = {}   # New items
-        for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX']):
-            cur[item.ID] = item
-
-        for item in content[contype]:
-            myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], 'drupalnodeid', item['DrupalNodeid'])
-            self.GWPROVIDER_URNMAP[item['Name']] = myGLOBALURN
-            try:
-                local = ResourceV3Local(
-                            ID = myGLOBALURN,
-                            CreationTime = datetime.now(timezone.utc),
-                            Validity = self.DefaultValidity,
-                            Affiliation = self.Affiliation,
-                            LocalID = item['DrupalNodeid'],
-                            LocalType = config['LOCALTYPE'],
-                            LocalURL = item.get('DrupalUrl', config.get('SOURCEDEFAULTURL', None)),
-                            CatalogMetaURL = self.CATALOGURN_to_URL(config['CATALOGURN']),
-                            EntityJSON = item,
-                        )
-                local.save()
-            except Exception as e:
-                msg = '{} saving local ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
-                self.logger.error(msg)
-                return(False, msg)
-            new[myGLOBALURN] = local
-                
-            try:
-                ShortDescription = 'The {} Science Gateway Project'.format(item['Name'])
-                Description = Format_Description(item.get('Description'))
-                resource = ResourceV3(
-                            ID = myGLOBALURN,
-                            Affiliation = self.Affiliation,
-                            LocalID = item['DrupalNodeid'],
-                            QualityLevel = 'Production',
-                            Name = item['Name'],
-                            ResourceGroup = myRESGROUP,
-                            Type = myRESTYPE,
-                            ShortDescription = ShortDescription,
-                            ProviderID = None,
-                            Description = Description.html(ID=myGLOBALURN),
-                            Topics = item['FieldScience'],
-                            Keywords = None,
-                            Audience = self.Affiliation,
-                     )
-                resource.save()
-                if self.ESEARCH:
-                    resource.indexing()
-            except Exception as e:
-                msg = '{} saving resource ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
-                self.logger.error(msg)
-                return(False, msg)
-                
-            self.logger.debug('{} updated resource ID={}'.format(contype, myGLOBALURN))
-            self.STATS.update({me + '.Update'})
-
-        self.Delete_OLD(me, cur, new)
-
-        self.PROCESSING_SECONDS[me] += (datetime.now(timezone.utc) - start_utc).total_seconds()
-        self.Log_STEP(me)
-        return(0, '')
 
     ################################################################################
 
