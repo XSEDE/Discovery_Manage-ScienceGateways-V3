@@ -533,6 +533,9 @@ class Router():
                 self.logger.error(msg)
                 return(False, msg)
 
+            self.logger.debug('{} updated resource ID={}'.format(contype, myGLOBALURN))
+            self.STATS.update({me + '.Update'})
+
         self.Delete_OLD(me, cur, new)
 
         self.PROCESSING_SECONDS[me] += (datetime.now(timezone.utc) - start_utc).total_seconds()
