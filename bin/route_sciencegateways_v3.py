@@ -201,24 +201,7 @@ class Router():
         self.memory = {}                        # Used to put information in "memory"
         self.Affiliation = 'sciencegateways.org'  # This app is only for SGCI 
         self.DefaultValidity = timedelta(days = 14)
-        self.memory['gateway_urnmap'] = {}       # Mapping of Gateway Name to its GLOBALURN
-        self.GWPROVIDER_URNMAP = self.memory['gateway_urnmap']
-        self.memory['support_urnmap'] = {}       # Mapping of Support GlobalID to its GLOBALURN
-        self.SUPPORTPROVIDER_URNMAP = self.memory['support_urnmap']
-        self.memory['support_url2urn'] = {}      # Mapping of Support GlobalID to its Information Services URL
-        self.SUPPORTPROVIDER_URL2URN = self.memory['support_url2urn']
-        self.memory['sp_urnmap'] = {}            # Mapping of SiteID to its GLOBALURN
-        self.HPCPROVIDER_URNMAP = self.memory['sp_urnmap']
-        self.memory['hpc_urnmap'] = {}           # Mapping of ResourceID to its GLOBALURN
-        self.HPCRESOURCE_URNMAP = self.memory['hpc_urnmap']
-        self.memory['hpc_detail'] = {}           # Resource detail by ResourceID
-        self.HPCRESOURCE_INFO = self.memory['hpc_detail']
-        self.memory['rdrsp_urnmap'] = {}           # Mapping of RDR organization id to its GLOBALURN
-        self.RDRPROVIDER_URNMAP = self.memory['rdrsp_urnmap']
-        self.memory['rdrbase_urnmap'] = {}      # Mapping of RDR base-resource id to its GLOBALURN
-        self.RDRRESOURCE_BASE_URNMAP = self.memory['rdrbase_urnmap']
-        self.memory['rdrsub_urnmap'] = {}      # Mapping of RDR sub-resource id to its GLOBALURN
-        self.RDRRESOURCE_SUB_URNMAP = self.memory['rdrsub_urnmap']
+
         if self.args.dev:
             self.WAREHOUSE_API_PREFIX = 'http://localhost:8000'
         else:
@@ -409,7 +392,7 @@ class Router():
             except Exception as e:
                 self.logger.error('{} deleting Elastic id={}: {}'.format(type(e).__name__, URN, e))
             try:
-                # JK_TODO : remove of uncomment this line if add relations
+                # TODO: uncomment this line if add relations
                 #ResourceV3Relation.objects.filter(FirstResourceID__exact = URN).delete()
                 ResourceV3.objects.get(pk = URN).delete()
                 ResourceV3Local.objects.get(pk = URN).delete()
