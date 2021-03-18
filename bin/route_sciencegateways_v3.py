@@ -493,11 +493,14 @@ class Router():
             # update ResourceV3 (standard) table
             #
 
-            # prepare for Topics and Keywords fields of the standard table
+            # prepare for Topics fields of the standard table
+            # combine 'categories' , 'subcategories' and 'subcategories_children'
             topics = []
-            keywords = []
-            for category in item['value']['categories']:
+            for category in item['value']['categories'] + item['value']['subcategories'] + item['value']['subcategories_children']:
                 topics.append(category)
+
+            # prepare for Keywords fields of the standard table
+            keywords = []
             for tag in item['value']['tags']:
                 keywords.append(tag)
 
