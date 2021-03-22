@@ -1,2 +1,47 @@
-tag-0.1-2021???? Jonathan Kim
+
+tag-0.1-20210322 Jonathan Kim
+ - Add to the Description field a "Related Science Gateway resources:" header containing a bulleted list with:
+   - a "Go to Science Gateway" item with the "site" value
+   - a "View in source catalog" item with the "LocalURL" value
+   - a "Access source catalog" item with the related CatalogUserURL
+ - Use Format_Description class as demonstrated in Manage-Resource-V3 to generate ResourceV3.Description field.
+
+tag-0.1-20210318 Jonathan Kim
+ * 4c3b7c5 Append the values in categories, subcategories, and subcategories_children into the "Topics" field of Resource V3 standard table
+
+tag-0.1-20210317 Jonathan Kim
+ * 17c8d6e Add the code to log data loading each entry.  (missed adding this)
+ * 4fd4df1 Remove unused variables.
+
+tag-0.1-20210308 Jonathan Kim
+* 42c8094 - Add a few comments for better reading 
+  - Remove the old unused function Write_RSP_Gateway_Providers as cleanup.
+
+tag-0.1-20210305 Jonathan Kim
+ * 4b3dd55 Clean up comments, debugging code
+ * 7630141 - Add back the code to delete old data from standard table.
+ * 7b33a92 - Update made for the 'Description' field for Resource V3 standard table.  Description = SGCI description + SGCI institutions if exist.
+
+tag-0.1-20210303 Jonathan Kim
+ * 2ff1b16 - Move the 'Topics' and 'Keywords' handling code to the right place in the actual loop  -minor clean up
+ * 6522950 - Add code for loading SGCI data to Resource V3 standard table. 
+   - Add a query filter to url path, so do not get invalid data entries from tririeving SGCI data.  Only get data for item['name'] = 'sg_catalog_gatewaus'.
+
+
+tag-0.1-20210216 Jonathan Kim
+ * cdb71be Added DELETE_OLD() line. Test and verified it works with Resource V3 local table. For th
+ * dfb36ec Load SGCI data to Resource V3 local table.
+ * 5290b50 Change CATALOGURN from the change of SGCI catalog ID
+
+tag-0.1-20210204 Jonathan Kim
+ * e7302ac * In Get_HTTP(), adjust code in a way to make it easier to refactor for retrieving data
+case without loop if necessary later.
+
+tag-0.1-20210203 Jonathan Kim
+ * bf9412f - In Get_HTTP(), worked to retrieve SGCI data with multiple requests in loop in an accumulative manner, and it only works that way due to its specific parameters ( 'limit & offset ' ) for now.
+
+tag-0.1-20210202 Jonathan Kim
+ * c0896a9 Initial change to make this app run. It's runnable and debuggable from here.
+
+tag-0.1-20210126 JP
   - Initial check-in

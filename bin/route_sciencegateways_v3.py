@@ -450,21 +450,23 @@ class Router():
         me = '{} to {}({}:{})'.format(sys._getframe().f_code.co_name, self.WAREHOUSE_CATALOG, myRESGROUP, myRESTYPE)
         self.PROCESSING_SECONDS[me] = getattr(self.PROCESSING_SECONDS, me, 0)
 
-        # For LoccalURL - make a web link to access individual data 
-        localUrlPrefix = config['SRCURL'].scheme + '://' + config['SRCURL'].netloc + '/#/home/' 
-
+        # Prepare for LocalURL - make a web link to access individual data.
+        localUrlPrefix = config['SRCURL'].scheme + '://' + config['SRCURL'].netloc + '/#/home/'
+        
         cur = {}   # Current items
         new = {}   # New items
         # get existing SGCI data from local table
         for item in ResourceV3Local.objects.filter(Affiliation__exact = self.Affiliation).filter(ID__startswith = config['URNPREFIX'].replace(":catalog:", ":resource:catalog.")):
             cur[item.ID] = item
 
-
         #------------------------------------------------------
         # iterrate data to load to Resource V3 DB tables
         #
         for item in content[contype]['result'] :
             myGLOBALURN = self.format_GLOBALURN(config['URNPREFIX'], str(item['uuid'])).replace(":catalog:", ":resource:catalog.")
+
+            # For LocalURL. Used at both local and standard tables.
+            localURL = localUrlPrefix + item['uuid']
 
             # --------------------------------------------
             # load data to ResourceV3 (local) table
@@ -477,7 +479,7 @@ class Router():
                             Affiliation = self.Affiliation,
                             LocalID = item['uuid'],
                             LocalType = 'SGCI Catalog',
-                            LocalURL = localUrlPrefix + item['uuid'],
+                            LocalURL = localURL,
                             CatalogMetaURL = self.CATALOGURN_to_URL(config['CATALOGURN']),
                             EntityJSON = item,
                         )
@@ -504,15 +506,27 @@ class Router():
             for tag in item['value']['tags']:
                 keywords.append(tag)
 
-            # prepare for Description field. Append institutions to Description 
-            institutions = item['value'].get('institutions', None)
-            if institutions:
-                institutions_csv =  '\nAssociated Institutions:' + ','.join(institutions)
+            # 
+            # prepare for Description field. To append institutions as csv to Description.
+            institutions_list = item['value'].get('institutions', None)
+            if institutions_list:
+                institutions =  '\nAssociated Institutions:' + ','.join(institutions_list)
             else: # empty or not found
-                institutions_csv = ''
-
-
+                institutions = ''
+            
             try:
+                # for Description field
+                description = Format_Description(item['value'].get('description'))
+                if institutions:
+                    description.append(institutions)
+                description.blank_line()
+                description.append('Related Science Gateway resources:')
+                description.blank_line()
+                description.append('- Go to Science Gateway: {}'.format(item['value'].get('site')))
+                description.append('- View in source catalog: {}'.format(localURL))
+                description.append('- Access source catalog: {}'.format(config.get('CatalogUserURL')))
+
+                # Load data entries
                 resource = ResourceV3(
                             ID = myGLOBALURN,
                             Affiliation = self.Affiliation,
@@ -523,7 +537,7 @@ class Router():
                             Type = myRESTYPE,
                             ShortDescription = None,
                             ProviderID = None,
-                            Description = item['value']['description'] + institutions_csv,
+                            Description = description.html(ID=myGLOBALURN),
                             Topics = ','.join(topics),
                             Keywords = ','.join(keywords),
                             Audience = self.Affiliation,
