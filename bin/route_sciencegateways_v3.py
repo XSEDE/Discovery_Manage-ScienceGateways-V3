@@ -57,26 +57,36 @@ class Format_Description():
         self.markup_stream = io.StringIO()
         # Docutils settings
         self.markup_settings = {'warning_stream': self.markup_stream }
+        # Only one of these will be used
+        self.markup = True      # We're handling markup, or set to False if already html
+        self.value = None
         if initial is None:
-            self.value = None
-        else:
-            clean_initial = initial.rstrip()
-            if len(clean_initial) == 0:
-                self.value = None
-            else:
-                self.value = clean_initial
+            return
+        clean_initial = initial.rstrip()
+        if len(clean_initial) == 0:
+            return
+        if clean_initial[:1] == '<':
+            self.markup = False
+        self.value = clean_initial
     def append(self, value):
         clean_value = value.rstrip()
         if len(clean_value) > 0:
             if self.value is None:
                 self.value = clean_value
-            else:
+            elif self.markup:
                 self.value += '\n{}'.format(clean_value)
+            else:
+                self.value += '<br>{}'.format(clean_value)
     def blank_line(self): # Forced blank line used to start a markup list
-        self.value += '\n'
+        if self.markup:
+            self.value += '\n'
+        else:
+            self.value += '<br>'
     def html(self, ID=None): # If an ID is provided, log it to record what resource had the warnings
         if self.value is None:
             return(None)
+        if not self.markup:
+            return(self.value)
         output = formatter(self.value, filter_name='restructuredtext', settings_overrides=self.markup_settings)
         warnings = self.markup_stream.getvalue()
         if warnings:
@@ -329,15 +339,13 @@ class Router():
                 else: # accumulate remaining retrieved data
                     content['result'] += contentRemain['result']
 
-                # JK_TODO: remove debug lines when done.
-                print ('JK_DBG> lenListRetrieved: {} '.format(lenListRetrieved))
+                self.logger.debug('lenListRetrieved: {} '.format(lenListRetrieved))
                 dataOffset += dataStride
-                print('JK_DBG> dataOffset: {} '.format(dataOffset))
-                print('JK_DBG> numAllContent: {}'.format(len(content['result'])))
+                self.logger.debug('dataOffset: {} '.format(dataOffset))
+                self.logger.debug('numAllContent: {}'.format(len(content['result'])))
             except ValueError as e:
                 self.logger.error('Response not in expected JSON format ({})'.format(e))
                 return(None)
-
 
         # cache content only for the url used more than once
         if url.geturl() in self.URL_USE_COUNT:
