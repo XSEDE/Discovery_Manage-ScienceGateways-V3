@@ -414,12 +414,13 @@ class Router():
                 relationType = newRELATIONS[relatedID]
                 relationHASH = md5(':'.join([relatedID, relationType]).encode('UTF-8')).hexdigest()
                 relationID = ':'.join([myURN, relationHASH])
-                relation = ResourceV3Relation(
+                relation, created = ResourceV3Relation.objects.update_or_create(
                             ID = relationID,
-                            FirstResourceID = myURN,
-                            SecondResourceID = relatedID,
-                            RelationType = relationType,
-                     )
+                            defaults = {
+                                'FirstResourceID': myURN,
+                                'SecondResourceID': relatedID,
+                                'RelationType': relationType
+                            })
                 relation.save()
             except Exception as e:
                 msg = '{} saving Relation ID={}: {}'.format(type(e).__name__, relationID, e)
@@ -474,17 +475,18 @@ class Router():
             # load data to ResourceV3 (local) table
             #
             try:
-                local = ResourceV3Local(
+                local, created = ResourceV3Local.objects.update_or_create(
                             ID = myGLOBALURN,
-                            CreationTime = datetime.now(timezone.utc),
-                            Validity = self.DefaultValidity,
-                            Affiliation = self.Affiliation,
-                            LocalID = item['uuid'],
-                            LocalType = 'SGCI Catalog',
-                            LocalURL = localURL,
-                            CatalogMetaURL = self.CATALOGURN_to_URL(config['CATALOGURN']),
-                            EntityJSON = item,
-                        )
+                            defaults = {
+                                'CreationTime': datetime.now(timezone.utc),
+                                'Validity': self.DefaultValidity,
+                                'Affiliation': self.Affiliation,
+                                'LocalID': item['uuid'],
+                                'LocalType': 'SGCI Catalog',
+                                'LocalURL': localURL,
+                                'CatalogMetaURL': self.CATALOGURN_to_URL(config['CATALOGURN']),
+                                'EntityJSON': item
+                            })
                 local.save()
             except Exception as e:
                 msg = '{} saving local ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
@@ -529,21 +531,22 @@ class Router():
                 description.append('- Access source catalog: {}'.format(config.get('CatalogUserURL')))
 
                 # Load data entries
-                resource = ResourceV3(
+                resource, created = ResourceV3.objects.update_or_create(
                             ID = myGLOBALURN,
-                            Affiliation = self.Affiliation,
-                            LocalID = item['uuid'],
-                            QualityLevel = 'Production',
-                            Name = item['value']['name'],
-                            ResourceGroup = myRESGROUP,
-                            Type = myRESTYPE,
-                            ShortDescription = None,
-                            ProviderID = None,
-                            Description = description.html(ID=myGLOBALURN),
-                            Topics = ','.join(topics),
-                            Keywords = ','.join(keywords),
-                            Audience = self.Affiliation,
-                    )
+                            defaults = {
+                                'Affiliation': self.Affiliation,
+                                'LocalID': item['uuid'],
+                                'QualityLevel': 'Production',
+                                'Name': item['value']['name'],
+                                'ResourceGroup': myRESGROUP,
+                                'Type': myRESTYPE,
+                                'ShortDescription': None,
+                                'ProviderID': None,
+                                'Description': description.html(ID=myGLOBALURN),
+                                'Topics': ','.join(topics),
+                                'Keywords': ','.join(keywords),
+                                'Audience': self.Affiliation
+                            })
                 resource.save()
                 if self.ESEARCH:
                     resource.indexing()
